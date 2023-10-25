@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client';
 import { Route, RouterProvider, Routes, createBrowserRouter, createRoutesFromElements } from 'react-router-dom';
 import { AlertContainer } from './components/Misc/Alerts';
 import Home from './components/Home';
-import "./styles/main.css";
 import "./styles/tailwind.css";
 import Error404 from './components/404';
 
