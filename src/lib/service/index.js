@@ -51,3 +51,13 @@ export function dataSetter(setData, prop) {
         setData(prev => ({ ...prev, [prop]: value }));
     };
 }
+
+export function getFromDataOrInsert(addAlert, prop, id, data, getter, setData, softRej = true, ...params) {
+    return new Promise((res, rej) => {
+        const item = data[prop]?.find(item => item.id === id);
+        if (item) res(item);
+        else {
+            fetchData(addAlert, dataSetter(setData, prop), getter, softRej, ...params).then(d => res(d?.find(i => i.id === id))).catch(rej);
+        }
+    });
+}
