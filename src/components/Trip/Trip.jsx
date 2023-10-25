@@ -3,7 +3,6 @@ import { LineBadge } from "../Line/Line";
 import { useEffect, useState } from "react";
 import { getStopFromData } from "../../lib/service/stops";
 import { getLineFromData } from "../../lib/service/lines";
-import { fromValueToTime } from "../../lib/utils/hour";
 import { fetchData } from "../../lib/service";
 import { getCurrentPosition, getTripStops } from "../../lib/service/trips";
 import { ProgressBar } from "../Misc/Progress";
@@ -42,8 +41,8 @@ export function TripRow({ trip, data, addAlert }) {
             <td className="py-3">{line && <LineBadge line={line} />}</td>
             <td className="py-3 mx-1"><ArrowRightIcon className="w-6 fill-gray-600" /></td>
             <td className="py-3">{destination?.name}</td>
-            <td className="py-3 text-center">{fromValueToTime(trip.departure_time)}</td>
-            <td className="py-3 text-center">{fromValueToTime(trip.arrival_time)}</td>
+            <td className="py-3 text-center">{trip.departure_time}</td>
+            <td className="py-3 text-center">{trip.arrival_time}</td>
             <td className="py-3 px-2">{position && getStopFromData(position.previous_stop.stop_id, data)?.name}</td>
             <td className="py-3 px-2">{position && getStopFromData(position.next_stop.stop_id, data)?.name}</td>
         </tr>
@@ -55,8 +54,8 @@ export function TripRow({ trip, data, addAlert }) {
             <td></td>
             <td colSpan={2}>
                 <div className="flex justify-between">
-                    <span>{fromValueToTime(position?.previous_stop.departure_time)}</span>
-                    <span>{fromValueToTime(position?.next_stop.arrival_time)}</span>
+                    <span>{position?.previous_stop.departure_time}</span>
+                    <span>{position?.next_stop.arrival_time}</span>
                 </div>
                 <ProgressBar value={(position?.progression || 0) * 100} />
             </td>
