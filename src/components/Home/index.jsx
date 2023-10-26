@@ -10,7 +10,9 @@ export default function Home(props) {
         <div className="max-w-7xl px-6">
             <h2 className="py-6 text-lg font-semibold">Liste des transports actuellement en circulation:</h2>
             <HourDisplay />
-            <TripList {...props} />
+            <div className="max-h-[42rem] overflow-y-auto mt-4">
+                <TripList {...props} />
+            </div>
         </div>
 
         <Footer {...props} />

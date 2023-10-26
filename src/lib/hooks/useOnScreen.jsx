@@ -9,8 +9,8 @@ export default function useOnScreen(ref) {
     ), [ref]);
 
     useEffect(() => {
-        observer.observe(ref.current)
-        return () => observer.disconnect()
+        observer.observe(ref.current);
+        return () => observer.disconnect();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 

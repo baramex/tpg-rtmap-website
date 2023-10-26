@@ -35,7 +35,7 @@ export function TripRow({ trip, data, addAlert }) {
     }, [isVisible]);
 
     useEffect(() => {
-        if (stops) {
+        if (stops && !job && isVisible) {
             setPosition(getCurrentPosition(stops));
 
             console.log(`[${trip.id}] Start job`);
@@ -48,7 +48,7 @@ export function TripRow({ trip, data, addAlert }) {
             return () => (job || j).cancel();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [stops]);
+    }, [stops, isVisible]);
 
     useEffect(() => {
         if (job) {
@@ -63,7 +63,6 @@ export function TripRow({ trip, data, addAlert }) {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isVisible]);
-
 
     return (<>
         <tr ref={ref}>
@@ -82,11 +81,11 @@ export function TripRow({ trip, data, addAlert }) {
             <td></td>
             <td></td>
             <td colSpan={2}>
-                <div className="flex justify-between">
+                <ProgressBar value={(position?.progression || 0) * 100} />
+                <div className="flex justify-between mt-1">
                     <span>{position?.previous_stop.departure_time}</span>
                     <span>{position?.next_stop.arrival_time}</span>
                 </div>
-                <ProgressBar value={(position?.progression || 0) * 100} />
             </td>
         </tr>
     </>);

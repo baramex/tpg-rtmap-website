@@ -60,7 +60,7 @@ export default function TripList({ addAlert, data, setData }) {
             </tr>
         </thead>
         <tbody>
-            {trips && trips.filter(t => t.show).map(trip => <TripRow key={trip.id} trip={trip} addAlert={addAlert} data={data} setData={setData} />)}
+            {trips && trips.filter(t => t.show).map(trip => <TripRow key={trip.id} trip={trip} addAlert={addAlert} data={data} />)}
         </tbody>
     </table>);
 }
