@@ -1,12 +1,13 @@
+import { scheduleJob } from "node-schedule";
 import { useEffect, useState } from "react";
 
 export function HourDisplay(props) {
     const [currentDate, setCurrentDate] = useState(new Date());
 
     useEffect(() => {
-        const interval = setInterval(() => setCurrentDate(new Date()), 1000);
+        const job = scheduleJob("* * * * * *", () => setCurrentDate(new Date()));
 
-        return () => clearInterval(interval);
+        return () => job.cancel();
     }, []);
 
     return <span {...props}>{currentDate.toLocaleTimeString("fr-CH")}</span>;
