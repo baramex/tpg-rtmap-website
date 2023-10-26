@@ -29,9 +29,9 @@ export function TripRow({ trip, data, addAlert }) {
     useEffect(() => {
         if (stops) {
             setPosition(getCurrentPosition(stops));
-            setInterval(() => setPosition(getCurrentPosition(stops)), 1000);
+            const interval = setInterval(() => setPosition(getCurrentPosition(stops)), 1000);
 
-            return () => clearInterval();
+            return () => clearInterval(interval);
         }
     }, [stops]);
 
