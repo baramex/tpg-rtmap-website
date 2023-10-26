@@ -4,11 +4,15 @@ import { dataSetter, fetchData } from "../../lib/service";
 import { TripRow } from "./Trip";
 import { getStops } from "../../lib/service/stops";
 import { getLines } from "../../lib/service/lines";
+import { getDateFromTime } from "../../lib/utils/date";
+import { scheduleJob } from "node-schedule";
 
 export default function TripList({ addAlert, data, setData }) {
     const [trips, setTrips] = useState();
-    const [stops_fetched, setStopsFetched] = useState(false);
-    const [lines_fetched, setLinesFetched] = useState(false);
+    const [stopsFetched, setStopsFetched] = useState(false);
+    const [linesFetched, setLinesFetched] = useState(false);
+
+    const [lastDate, setLastDate] = useState();
 
     useEffect(() => {
         fetchData(addAlert, dataSetter(setData, "stops"), getStops).then(() => setStopsFetched(true));
@@ -17,9 +21,31 @@ export default function TripList({ addAlert, data, setData }) {
     }, []);
 
     useEffect(() => {
-        if (!trips && stops_fetched && lines_fetched) fetchData(addAlert, trips => setTrips(trips?.sort((a,b) => a.line_id - b.line_id)), getCurrentTrips);
+        if (!trips && stopsFetched && linesFetched) {
+            const date = Math.round(Date.now() / 1000);
+
+            const interval = setInterval(() => {
+                console.log("update trips");
+                fetchData(addAlert, trips => { setLastDate(date); setTrips(t => trips.filter(a => !t.some(b => a.id === b.id)).concat(t).map(trip => ({ ...trip, show: getDateFromTime(trip.departure_time).getTime() <= Date.now() && getDateFromTime(trip.arrival_time).getTime() >= Date.now() })).sort((a, b) => a.line_id - b.line_id)); }, getCurrentTrips, true, 10, date, lastDate);
+            }, 1000 * 60 * 10);
+
+            fetchData(addAlert, trips => { setLastDate(date); setTrips(trips.map(trip => ({ ...trip, show: getDateFromTime(trip.departure_time).getTime() <= Date.now() && getDateFromTime(trip.arrival_time).getTime() >= Date.now() })).sort((a, b) => a.line_id - b.line_id)); }, getCurrentTrips, true, 10, date);
+
+            return () => clearInterval(interval);
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [stops_fetched, lines_fetched]);
+    }, [stopsFetched, linesFetched]);
+
+    useEffect(() => {
+        if (trips) {
+            const job = scheduleJob("0 * * * * *", () => {
+                console.log("update trips show");
+                setTrips(t => t.map(trip => ({ ...trip, show: getDateFromTime(trip.departure_time).getTime() <= Date.now() && getDateFromTime(trip.arrival_time).getTime() >= Date.now() })));
+            });
+
+            return () => job.cancel();
+        }
+    }, [trips]);
 
     return (<table>
         <thead>
@@ -34,7 +60,7 @@ export default function TripList({ addAlert, data, setData }) {
             </tr>
         </thead>
         <tbody>
-            {trips && trips.map(trip => <TripRow key={trip.id} trip={trip} addAlert={addAlert} data={data} setData={setData} />)}
+            {trips && trips.filter(t => t.show).map(trip => <TripRow key={trip.id} trip={trip} addAlert={addAlert} data={data} setData={setData} />)}
         </tbody>
     </table>);
 }

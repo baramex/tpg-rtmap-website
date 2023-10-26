@@ -1,8 +1,8 @@
 import { api } from ".";
 import { getDateFromTime } from "../utils/date";
 
-export function getCurrentTrips(bounds = 0) {
-    return api(`/trips?timestamp=${Math.round(Date.now() / 1000)}&bounds=${bounds}`, "GET");
+export function getCurrentTrips(bounds = 0, date, from) {
+    return api(`/trips?timestamp=${Math.round(date || Date.now() / 1000)}&bounds=${bounds}${from ? "&from=" + from : ""}`, "GET");
 }
 
 export function getTripStops(tripId) {

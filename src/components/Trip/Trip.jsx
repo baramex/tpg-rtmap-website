@@ -6,6 +6,7 @@ import { getLineFromData } from "../../lib/service/lines";
 import { fetchData } from "../../lib/service";
 import { getCurrentPosition, getTripStops } from "../../lib/service/trips";
 import { ProgressBar } from "../Misc/Progress";
+import { scheduleJob } from "node-schedule";
 
 export function TripRow({ trip, data, addAlert }) {
     const [origin, setOrigin] = useState();
@@ -29,10 +30,15 @@ export function TripRow({ trip, data, addAlert }) {
     useEffect(() => {
         if (stops) {
             setPosition(getCurrentPosition(stops));
-            const interval = setInterval(() => setPosition(getCurrentPosition(stops)), 1000);
 
-            return () => clearInterval(interval);
+            const job = scheduleJob("* * * * * *", () => {
+                console.log("update")
+                setPosition(getCurrentPosition(stops));
+            });
+
+            return () => job.cancel();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [stops]);
 
 
