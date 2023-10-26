@@ -8,6 +8,8 @@ import { getCurrentPosition, getTripStops } from "../../lib/service/trips";
 import { ProgressBar } from "../Misc/Progress";
 import { scheduleJob } from "node-schedule";
 import useOnScreen from "../../lib/hooks/useOnScreen";
+import { getDateFromTime } from "../../lib/utils/date";
+import Tooltip from "../Misc/Tooltip";
 
 export function TripRow({ trip, data, addAlert }) {
     const [origin, setOrigin] = useState();
@@ -42,6 +44,7 @@ export function TripRow({ trip, data, addAlert }) {
             let j = scheduleJob("* * * * * *", () => {
                 console.log(`[${trip.id}] Update position`);
                 setPosition(getCurrentPosition(stops));
+                if (getDateFromTime(trip.arrival_time).getTime() <= Date.now()) return j.cancel();
             });
             setJob(j);
 
@@ -73,6 +76,44 @@ export function TripRow({ trip, data, addAlert }) {
             <td className="py-3 text-center">{trip.arrival_time}</td>
             <td className="py-3 px-2">{position && getStopFromData(position.previous_stop.stop_id, data)?.name}</td>
             <td className="py-3 px-2 text-right">{position && getStopFromData(position.next_stop.stop_id, data)?.name}</td>
+            <td className="py-3 ps-5">
+                <Tooltip>
+                    <dl className="text-sm grid lg:grid-cols-2 gap-x-6 gap-y-4 [&_dd]:font-medium px-2">
+                        <div className="flex items-center justify-between gap-2">
+                            <dt>ID de trajet</dt>
+                            <dd>{trip.id}</dd>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                            <dt>Type de transport</dt>
+                            <dd>{trip.transport_mode}</dd>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                            <dt>Heure de départ</dt>
+                            <dd>{trip.departure_time}</dd>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                            <dt>Heure d'arrivée</dt>
+                            <dd>{trip.arrival_time}</dd>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                            <dt>Origine</dt>
+                            <dd>{origin?.name}</dd>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                            <dt>Destination</dt>
+                            <dd>{destination?.name}</dd>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                            <dt>Direction</dt>
+                            <dd>{trip.direction}</dd>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                            <dt>Nombre d'arrêts</dt>
+                            <dd>{stops?.length}</dd>
+                        </div>
+                    </dl>
+                </Tooltip>
+            </td>
         </tr>
         <tr>
             <td></td>
