@@ -47,13 +47,13 @@ export default function Map({ addAlert, showStops = true }) {
 
             if (showStops) {
                 stops.forEach(stop => {
-                    const pinIcon = new DOMParser().parseFromString(stopIcon, "image/svg+xml").documentElement; // TODO: improve icon/class management for markers
+                    const pin = new DOMParser().parseFromString(stopIcon, "image/svg+xml").documentElement; // TODO: improve icon/class management for markers
 
                     const marker = new AdvancedMarkerElement({ // TO CHANGE: advanced and create pin
                         position: { lat: stop.latitude, lng: stop.longitude },
                         map,
                         title: stop.name,
-                        content: pinIcon
+                        content: pin
                     });
 
                     marker.addListener("click", () => {
