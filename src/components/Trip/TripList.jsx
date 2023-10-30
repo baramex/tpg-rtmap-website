@@ -21,20 +21,18 @@ export default function TripList({ addAlert, data, setData }) {
     }, []);
 
     useEffect(() => {
-        if (!trips && stopsFetched && linesFetched) {
-            const date = Math.round(Date.now() / 1000);
+        const date = Math.round(Date.now() / 1000);
 
-            const interval = setInterval(() => {
-                console.log("[top] Update new trips"); // TODO: test
-                fetchData(addAlert, trips => { setLastDate(date); setTrips(t => trips.filter(a => !t.some(b => a.id === b.id)).concat(t).map(trip => ({ ...trip, show: getDateFromTime(trip.departure_time).getTime() <= Date.now() && getDateFromTime(trip.arrival_time).getTime() >= Date.now() })).sort((a, b) => a.line_id - b.line_id)); }, getCurrentTrips, true, 10, date, lastDate);
-            }, 1000 * 60 * 2);
+        const interval = setInterval(() => {
+            console.log("[top] Update new trips"); // TODO: test
+            fetchData(addAlert, trips => { setLastDate(date); setTrips(t => trips.filter(a => !t.some(b => a.id === b.id)).concat(t).map(trip => ({ ...trip, show: getDateFromTime(trip.departure_time).getTime() <= Date.now() && getDateFromTime(trip.arrival_time).getTime() >= Date.now() })).sort((a, b) => a.line_id - b.line_id)); }, getCurrentTrips, true, 10, date, lastDate);
+        }, 1000 * 60 * 2);
 
-            fetchData(addAlert, trips => { setLastDate(date); setTrips(trips.map(trip => ({ ...trip, show: getDateFromTime(trip.departure_time).getTime() <= Date.now() && getDateFromTime(trip.arrival_time).getTime() >= Date.now() })).sort((a, b) => a.line_id - b.line_id)); }, getCurrentTrips, true, 2, date);
+        fetchData(addAlert, trips => { setLastDate(date); setTrips(trips.map(trip => ({ ...trip, show: getDateFromTime(trip.departure_time).getTime() <= Date.now() && getDateFromTime(trip.arrival_time).getTime() >= Date.now() })).sort((a, b) => a.line_id - b.line_id)); }, getCurrentTrips, true, 2, date);
 
-            return () => clearInterval(interval);
-        }
+        return () => clearInterval(interval);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [stopsFetched, linesFetched]);
+    }, []);
 
     useEffect(() => {
         if (trips) {
@@ -60,7 +58,7 @@ export default function TripList({ addAlert, data, setData }) {
             </tr>
         </thead>
         <tbody>
-            {trips && trips.filter(t => t.show).map(trip => <TripRow key={trip.id} trip={trip} addAlert={addAlert} data={data} />)}
+            {trips && stopsFetched && linesFetched && trips.filter(t => t.show).map(trip => <TripRow key={trip.id} trip={trip} addAlert={addAlert} data={data} />)}
         </tbody>
     </table>);
 }
