@@ -8,9 +8,12 @@ import { stopIcon } from '../Icon';
 import { scheduleJob } from 'node-schedule';
 import { getDateFromTime } from '../../lib/utils/date';
 import { getCurrentTrips, getTripStops } from '../../lib/service/trips';
+import axios from 'axios';
+import { getLineFromData, getLines } from '../../lib/service/lines';
 
 export default function Map({ addAlert, showStops = true, showTrips = true }) {
     const [stops, setStops] = useState();
+    const [lines, setLines] = useState();
 
     const [trips, setTrips] = useState();
     const [lastDate, setLastDate] = useState();
@@ -19,6 +22,8 @@ export default function Map({ addAlert, showStops = true, showTrips = true }) {
 
     const googleMapRef = useRef();
     const [map, setMap] = useState();
+
+    const [drawn, setDrawn] = useState(false);
 
     useEffect(() => {
         const options = {
@@ -29,6 +34,7 @@ export default function Map({ addAlert, showStops = true, showTrips = true }) {
         new Loader(options).load().then(() => { setLoadMap(true) });
 
         fetchData(addAlert, setStops, getStops);
+        fetchData(addAlert, setLines, getLines);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -37,7 +43,7 @@ export default function Map({ addAlert, showStops = true, showTrips = true }) {
 
         const interval = setInterval(() => {
             console.log("[top] Update new trips"); // TODO: test
-            fetchData(addAlert, trips => { setLastDate(date); setTrips(t => trips.filter(a => !t.some(b => a.id === b.id)).concat(t).map(trip => ({ ...trip, show: getDateFromTime(trip.departure_time).getTime() <= Date.now() && getDateFromTime(trip.arrival_time).getTime() >= Date.now() })).sort((a, b) => a.line_id - b.line_id)); }, getCurrentTrips, true, 10, date, lastDate);
+            fetchData(addAlert, trips => { setLastDate(date); setTrips(t => trips.filter(a => !t.some(b => a.id === b.id)).concat(t).map(trip => ({ ...trip, show: getDateFromTime(trip.departure_time).getTime() <= Date.now() && getDateFromTime(trip.arrival_time).getTime() >= Date.now() })).sort((a, b) => a.line_id - b.line_id)); }, getCurrentTrips, true, 2, date, lastDate);
         }, 1000 * 60 * 2);
 
         fetchData(addAlert, trips => { setLastDate(date); setTrips(trips.map(trip => ({ ...trip, show: getDateFromTime(trip.departure_time).getTime() <= Date.now() && getDateFromTime(trip.arrival_time).getTime() >= Date.now() })).sort((a, b) => a.line_id - b.line_id)); }, getCurrentTrips, true, 2, date);
@@ -63,15 +69,17 @@ export default function Map({ addAlert, showStops = true, showTrips = true }) {
         const googleMap = new window.google.maps.Map(googleMapRef.current, {
             center: new window.google.maps.LatLng(46.20483, 6.1430388),
             zoom: 12,
-            mapId: "DEMO_MAP_ID" // TO CHANGE
+            mapId: "AIzaSyCNeFDat_XR0e2ArKsisG8M_JdgVYy9vfI" // TO CHANGE
         });
         setMap(googleMap);
     }, [loadMap]);
 
     useEffect(() => {
-        if (!map || !stops || !trips) return;
+        if (!map || !stops || !trips || drawn) return;
 
         (async () => {
+            setDrawn(true);
+
             const { AdvancedMarkerElement } = await window.google.maps.importLibrary("marker");
 
             const infoWindow = new window.google.maps.InfoWindow();
@@ -96,25 +104,36 @@ export default function Map({ addAlert, showStops = true, showTrips = true }) {
             }
 
             if (showTrips) {
-                for (const trip of trips) { // TODO: draw lines instead of trips and check if they are edited
+                for (const trip of trips) {
                     if (!trip.show) continue;
 
-                    const tripStops = (await getTripStops(trip.id)).sort((a, b) => a.sequence - b.sequence).slice(1, -2);
+                    const tripStops = (await getTripStops(trip.id)).sort((a, b) => a.sequence - b.sequence);
 
-                    const directionsService = new window.google.maps.DirectionsService();
-                    const directionsRenderer = new window.google.maps.DirectionsRenderer();
+                    const pathValues = tripStops.map(s => `${getStopFromData(s.stop_id, { stops }).latitude},${getStopFromData(s.stop_id, { stops }).longitude}`);
 
-                    directionsService.route({
-                        origin: new window.google.maps.LatLng(getStopFromData(trip.origin_id, { stops }).latitude, getStopFromData(trip.origin_id, { stops }).longitude),
-                        destination: new window.google.maps.LatLng(getStopFromData(trip.destination_id, { stops }).latitude, getStopFromData(trip.destination_id, { stops }).longitude),
-                        waypoints: tripStops.map(s => ({ location: new window.google.maps.LatLng(getStopFromData(s.stop_id, { stops }).latitude, getStopFromData(s.stop_id, { stops }).longitude), stopover: false })),
-                        travelMode: "DRIVING"
-                    }, function (response, status) {
-                        if (status === 'OK') {
-                            directionsRenderer.setDirections(response);
-                            directionsRenderer.setMap(map);
+                    const data = await axios.get('https://roads.googleapis.com/v1/snapToRoads', { // do that server side for every different stop list (path)
+                        params: {
+                            interpolate: true,
+                            key: "AIzaSyCNeFDat_XR0e2ArKsisG8M_JdgVYy9vfI",
+                            path: pathValues.join('|')
                         }
                     });
+
+                    console.log(trip, tripStops);
+                    console.log(data, pathValues);
+
+                    const snappedPath = data.data.snappedPoints.map(p => new window.google.maps.LatLng(p.location.latitude, p.location.longitude));
+
+                    console.log(snappedPath);
+
+                    const line = getLineFromData(trip.line_id, { lines })
+                    const snappedPolyline = new window.google.maps.Polyline({
+                        path: snappedPath,
+                        strokeColor: line ? "rgb(" + line.color + ")" : "#0000FF",
+                        strokeWeight: 5
+                    });
+
+                    snappedPolyline.setMap(map);
                 }
             }
         })();
