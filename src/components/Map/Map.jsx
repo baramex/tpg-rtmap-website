@@ -1,7 +1,7 @@
 
 import { fetchData } from '../../lib/service';
 import { useEffect, useState } from 'react';
-import { getStops } from '../../lib/service/stops';
+import { getStopFromData, getStops } from '../../lib/service/stops';
 import { useRef } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
 import { stopIcon } from '../Icon';
@@ -117,8 +117,14 @@ export default function Map({ addAlert, showStops = false, showTrips = true }) {
                         strokeColor: line ? "rgb(" + line.color + ")" : "#0000FF",
                         strokeWeight: 5
                     });
-
                     snappedPolyline.setMap(map);
+
+                    snappedPolyline.addListener("click", e => {
+                        infoWindow.close();
+                        infoWindow.setContent("Ligne: " + line.name + " -> " + getStopFromData(trip.destination_id, { stops }).name + "<br />Heure de départ: " + trip.departure_time + "<br />Heure d'arrivée: " + trip.arrival_time + "<br/>Voyage:" + trip.id);
+                        infoWindow.setPosition(e.latLng);
+                        infoWindow.open(snappedPolyline.map);
+                    });
                 }
             }
         })();
