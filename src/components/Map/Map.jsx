@@ -1,17 +1,16 @@
 
 import { fetchData } from '../../lib/service';
 import { useEffect, useState } from 'react';
-import { getStopFromData, getStops } from '../../lib/service/stops';
+import { getStops } from '../../lib/service/stops';
 import { useRef } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
 import { stopIcon } from '../Icon';
 import { scheduleJob } from 'node-schedule';
 import { getDateFromTime } from '../../lib/utils/date';
-import { getCurrentTrips, getTripStops } from '../../lib/service/trips';
-import axios from 'axios';
+import { getCurrentTrips, getTripShape } from '../../lib/service/trips';
 import { getLineFromData, getLines } from '../../lib/service/lines';
 
-export default function Map({ addAlert, showStops = true, showTrips = true }) {
+export default function Map({ addAlert, showStops = false, showTrips = true }) {
     const [stops, setStops] = useState();
     const [lines, setLines] = useState();
 
@@ -107,24 +106,10 @@ export default function Map({ addAlert, showStops = true, showTrips = true }) {
                 for (const trip of trips) {
                     if (!trip.show) continue;
 
-                    const tripStops = (await getTripStops(trip.id)).sort((a, b) => a.sequence - b.sequence);
+                    const shape = await getTripShape(trip.id);
 
-                    const pathValues = tripStops.map(s => `${getStopFromData(s.stop_id, { stops }).latitude},${getStopFromData(s.stop_id, { stops }).longitude}`);
-
-                    const data = await axios.get('https://roads.googleapis.com/v1/snapToRoads', { // do that server side for every different stop list (path)
-                        params: {
-                            interpolate: true,
-                            key: "AIzaSyCNeFDat_XR0e2ArKsisG8M_JdgVYy9vfI",
-                            path: pathValues.join('|')
-                        }
-                    });
-
-                    console.log(trip, tripStops);
-                    console.log(data, pathValues);
-
-                    const snappedPath = data.data.snappedPoints.map(p => new window.google.maps.LatLng(p.location.latitude, p.location.longitude));
-
-                    console.log(snappedPath);
+                    shape.points.sort((a, b) => a.sequence - b.sequence);
+                    const snappedPath = shape.points.map(p => new window.google.maps.LatLng(p.latitude, p.longitude));
 
                     const line = getLineFromData(trip.line_id, { lines })
                     const snappedPolyline = new window.google.maps.Polyline({

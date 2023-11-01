@@ -9,6 +9,10 @@ export function getTripStops(tripId) {
     return api(`/trip/${tripId}/stops`, "GET");
 }
 
+export function getTripShape(tripId) {
+    return api(`/trip/${tripId}/shape`, "GET");
+}
+
 export function getCurrentPosition(tripStops) {
     const time = new Date();
     const stops = tripStops.sort((a, b) => a.sequence - b.sequence);
