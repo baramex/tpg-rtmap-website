@@ -9,5 +9,5 @@ export function extractLineFromData(addAlert, id, data, setData, softRej) {
 }
 
 export function getLineFromData(id, data) {
-    return data.lines?.find(line => line.id === id);
+    return data.lines?.find(line => line.id === id) || { name: id };
 }

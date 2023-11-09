@@ -107,23 +107,22 @@ export default function Map({ addAlert, showStops = false, showTrips = true }) {
                 for (const trip of trips) {
                     if (!trip.show) continue;
 
-                    if (trip.line_id !== 51) continue; // DEBUGGING
-
                     const legs = await getDirectionLegs(trip.direction_id);
                     const steps = await getDirectionLegSteps(trip.direction_id);
 
                     legs.sort((a, b) => a.sequence - b.sequence);
                     steps.sort((a, b) => a.leg_id - b.leg_id || a.sequence - b.sequence);
 
-                    /*const snappedPath = [];
+                    // draw all steps
+                    const snappedPath = [];
                     steps.forEach((s, i) => {
                         snappedPath.push(new window.google.maps.LatLng(s.start_lat, s.start_lng));
                         if (s.end_lat !== steps[i + 1]?.start_lat || s.end_lng !== steps[i + 1]?.start_lng) snappedPath.push(new window.google.maps.LatLng(s.start_lat, s.start_lng));
-                    });*/
+                    });
 
-                    console.log(legs);
-                    const snappedPath = legs.map(l => new window.google.maps.LatLng(getStopFromData(l.origin_id, { stops }).latitude, getStopFromData(l.origin_id, { stops }).longitude));
-                    snappedPath.push(new window.google.maps.LatLng(getStopFromData(legs[legs.length - 1].destination_id, { stops }).latitude, getStopFromData(legs[legs.length - 1].destination_id, { stops }).longitude));
+                    // draw legs (stops)
+                    /*const snappedPath = legs.map(l => new window.google.maps.LatLng(getStopFromData(l.origin_id, { stops }).latitude, getStopFromData(l.origin_id, { stops }).longitude));
+                    snappedPath.push(new window.google.maps.LatLng(getStopFromData(legs[legs.length - 1].destination_id, { stops }).latitude, getStopFromData(legs[legs.length - 1].destination_id, { stops }).longitude));*/
 
                     const line = getLineFromData(trip.line_id, { lines })
                     const snappedPolyline = new window.google.maps.Polyline({
@@ -139,8 +138,6 @@ export default function Map({ addAlert, showStops = false, showTrips = true }) {
                         infoWindow.setPosition(e.latLng);
                         infoWindow.open(snappedPolyline.map);
                     });
-
-                    break; // DEBUGGING
                 }
             }
         })();
