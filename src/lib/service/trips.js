@@ -13,7 +13,7 @@ export function getTripShape(tripId) {
     return api(`/trip/${tripId}/shape`, "GET");
 }
 
-export function getCurrentPosition(tripStops) {
+export function getCurrentProgress(tripStops) {
     const time = new Date();
     const stops = tripStops.sort((a, b) => a.sequence - b.sequence);
 
@@ -28,4 +28,30 @@ export function getCurrentPosition(tripStops) {
         next_stop: next_stop,
         progression
     };
+}
+
+export function getCurrentPosition(directionLegs, legSteps, progress) {
+    if (!progress) return undefined;
+    const leg = directionLegs.find(l => l.origin_id === progress.previous_stop.stop_id && l.destination_id === progress.next_stop.stop_id);
+    if (!leg) return undefined;
+
+    const steps = legSteps.filter(s => s.leg_id === leg.id).sort((a, b) => a.sequence - b.sequence);
+
+    let currProgress = 0;
+    for (const index in steps) {
+        const step = steps[index];
+        const endProgress = currProgress + step.duration / leg.duration;
+
+        if ((progress.progression >= currProgress && progress.progression <= endProgress) || index === steps.length - 1) {
+            const startPos = { lat: step.start_lat, lng: step.start_lng };
+            const endPos = { lat: step.end_lat, lng: step.end_lng };
+
+            const lat = (progress.progression - currProgress) * (endPos.lat - startPos.lat) / (endProgress - currProgress) + startPos.lat;
+            const lng = (progress.progression - currProgress) * (endPos.lng - startPos.lng) / (endProgress - currProgress) + startPos.lng;
+
+            return { lat, lng };
+        }
+
+        currProgress += step.duration / leg.duration;
+    }
 }

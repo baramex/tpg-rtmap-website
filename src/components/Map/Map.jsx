@@ -7,7 +7,7 @@ import { Loader } from '@googlemaps/js-api-loader';
 import { stopIcon } from '../Icon';
 import { scheduleJob } from 'node-schedule';
 import { getDateFromTime } from '../../lib/utils/date';
-import { getCurrentTrips } from '../../lib/service/trips';
+import { getCurrentPosition, getCurrentProgress, getCurrentTrips, getTripStops } from '../../lib/service/trips';
 import { getLineFromData, getLines } from '../../lib/service/lines';
 import { getDirectionLegSteps, getDirectionLegs } from '../../lib/service/direction';
 
@@ -107,8 +107,12 @@ export default function Map({ addAlert, showStops = false, showTrips = true }) {
                 for (const trip of trips) {
                     if (!trip.show) continue;
 
+                    if(trip.line_id !== 7) continue; // DEBUGGING
+
                     const legs = await getDirectionLegs(trip.direction_id);
                     const steps = await getDirectionLegSteps(trip.direction_id);
+
+                    const tripStops = await getTripStops(trip.id);
 
                     legs.sort((a, b) => a.sequence - b.sequence);
                     steps.sort((a, b) => a.leg_id - b.leg_id || a.sequence - b.sequence);
@@ -138,6 +142,21 @@ export default function Map({ addAlert, showStops = false, showTrips = true }) {
                         infoWindow.setPosition(e.latLng);
                         infoWindow.open(snappedPolyline.map);
                     });
+
+                    const busPosition = getCurrentPosition(legs, steps, getCurrentProgress(tripStops));
+                    if (busPosition) {
+                        const bus = new window.google.maps.Circle({
+                            fillColor: line ? "rgb(" + line.color + ")" : "#0000FF",
+                            fillOpacity: .8,
+                            strokeOpacity: .8,
+                            strokeWeight: 2,
+                            map,
+                            center: busPosition,
+                            radius: 20
+                        });
+                    } else console.warn("No bus position found for trip " + trip.id);
+
+                    break; // DEBUGGING
                 }
             }
         })();

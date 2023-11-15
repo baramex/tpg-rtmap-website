@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { getStopFromData } from "../../lib/service/stops";
 import { getLineFromData } from "../../lib/service/lines";
 import { fetchData } from "../../lib/service";
-import { getCurrentPosition, getTripStops } from "../../lib/service/trips";
+import { getCurrentProgress, getTripStops } from "../../lib/service/trips";
 import { ProgressBar } from "../Misc/Progress";
 import { scheduleJob } from "node-schedule";
 import useOnScreen from "../../lib/hooks/useOnScreen";
@@ -38,12 +38,12 @@ export function TripRow({ trip, data, addAlert }) {
 
     useEffect(() => {
         if (stops && !job && isVisible) {
-            setPosition(getCurrentPosition(stops));
+            setPosition(getCurrentProgress(stops));
 
             console.log(`[${trip.id}] Start job`);
             let j = scheduleJob("* * * * * *", () => {
                 console.log(`[${trip.id}] Update position`);
-                setPosition(getCurrentPosition(stops));
+                setPosition(getCurrentProgress(stops));
                 if (getDateFromTime(trip.arrival_time).getTime() <= Date.now()) return j.cancel();
             });
             setJob(j);
