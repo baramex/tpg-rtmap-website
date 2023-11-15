@@ -107,8 +107,6 @@ export default function Map({ addAlert, showStops = false, showTrips = true }) {
                 for (const trip of trips) {
                     if (!trip.show) continue;
 
-                    if(trip.line_id !== 7) continue; // DEBUGGING
-
                     const legs = await getDirectionLegs(trip.direction_id);
                     const steps = await getDirectionLegSteps(trip.direction_id);
 
@@ -154,6 +152,13 @@ export default function Map({ addAlert, showStops = false, showTrips = true }) {
                             center: busPosition,
                             radius: 20
                         });
+                        
+                        // DEBUGGING
+                        setInterval(() => {
+    
+                            const busPosition = getCurrentPosition(legs, steps, getCurrentProgress(tripStops));
+                            bus.setCenter(busPosition);
+                        }, 1000);
                     } else console.warn("No bus position found for trip " + trip.id);
 
                     break; // DEBUGGING
