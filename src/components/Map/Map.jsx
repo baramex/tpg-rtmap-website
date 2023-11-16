@@ -23,8 +23,6 @@ export default function Map({ addAlert, showStops = false, showTrips = true }) {
     const googleMapRef = useRef();
     const [map, setMap] = useState();
 
-    const [drawn, setDrawn] = useState(false);
-
     useEffect(() => {
         const options = {
             apiKey: "AIzaSyCNeFDat_XR0e2ArKsisG8M_JdgVYy9vfI",
@@ -54,12 +52,22 @@ export default function Map({ addAlert, showStops = false, showTrips = true }) {
 
     useEffect(() => {
         if (trips) {
-            const job = scheduleJob("0 * * * * *", () => {
+            const job = scheduleJob("0 * * * * *", () => { // WARNING: for loop: update local trips, what will happen ??
                 console.log("[top] Update show trips");
                 setTrips(t => t.map(trip => ({ ...trip, show: getDateFromTime(trip.departure_time).getTime() <= Date.now() && getDateFromTime(trip.arrival_time).getTime() > Date.now() })));
             });
 
-            return () => job.cancel();
+            const positionUpdate = setInterval(() => {
+                trips.filter(t => t.bus && t.show).forEach(trip => {
+                    const busPosition = getCurrentPosition(trip.legs, trip.steps, getCurrentProgress(trip.tripStops));
+                    trip.bus.setCenter(busPosition);
+                });
+            }, 1000);
+
+            return () => {
+                job.cancel();
+                clearInterval(positionUpdate);
+            }
         }
     }, [trips]);
 
@@ -75,17 +83,15 @@ export default function Map({ addAlert, showStops = false, showTrips = true }) {
     }, [loadMap]);
 
     useEffect(() => {
-        if (!map || !stops || !trips || drawn) return;
+        if (!map || !stops || !trips) return;
 
         (async () => {
-            setDrawn(true);
-
             const { AdvancedMarkerElement } = await window.google.maps.importLibrary("marker");
 
-            const infoWindow = new window.google.maps.InfoWindow();
+            const infoWindow = new window.google.maps.InfoWindow(); // TO CREATE IN STATE
 
             if (showStops) {
-                stops.forEach(stop => { // TODO: check if they are edited (not to redraw them)
+                stops.filter(s => !s.marker).forEach(stop => { // TODO: check if they are edited (not to redraw them)
                     const pin = new DOMParser().parseFromString(stopIcon, "image/svg+xml").documentElement; // TODO: improve icon/class management for markers
 
                     const marker = new AdvancedMarkerElement({ // TO CHANGE: advanced and create pin
@@ -95,25 +101,28 @@ export default function Map({ addAlert, showStops = false, showTrips = true }) {
                         content: pin
                     });
 
+                    stop.marker = marker;
+
                     marker.addListener("click", () => {
                         infoWindow.close();
                         infoWindow.setContent(marker.title);
                         infoWindow.open(marker.map, marker);
                     });
                 });
+
+                setStops(stops);
             }
 
             if (showTrips) {
-                for (const trip of trips) {
-                    if (!trip.show) continue;
-
+                for (const trip of trips.filter(t => !t.polyline && t.show)) {
                     const legs = await getDirectionLegs(trip.direction_id);
                     const steps = await getDirectionLegSteps(trip.direction_id);
 
-                    const tripStops = await getTripStops(trip.id);
-
                     legs.sort((a, b) => a.sequence - b.sequence);
                     steps.sort((a, b) => a.leg_id - b.leg_id || a.sequence - b.sequence);
+
+                    trip.legs = legs;
+                    trip.steps = steps;
 
                     // draw all steps
                     const snappedPath = [];
@@ -134,12 +143,17 @@ export default function Map({ addAlert, showStops = false, showTrips = true }) {
                     });
                     snappedPolyline.setMap(map);
 
+                    trip.polyline = snappedPolyline;
+
                     snappedPolyline.addListener("click", e => {
                         infoWindow.close();
                         infoWindow.setContent("Ligne: " + line?.name + " -> " + getStopFromData(trip.destination_id, { stops })?.name + "<br />Heure de départ: " + trip.departure_time + "<br />Heure d'arrivée: " + trip.arrival_time + "<br/>Voyage:" + trip.id);
                         infoWindow.setPosition(e.latLng);
                         infoWindow.open(snappedPolyline.map);
                     });
+
+                    const tripStops = await getTripStops(trip.id);
+                    trip.tripStops = tripStops;
 
                     const busPosition = getCurrentPosition(legs, steps, getCurrentProgress(tripStops));
                     if (busPosition) {
@@ -152,17 +166,12 @@ export default function Map({ addAlert, showStops = false, showTrips = true }) {
                             center: busPosition,
                             radius: 20
                         });
-                        
-                        // DEBUGGING
-                        setInterval(() => {
-    
-                            const busPosition = getCurrentPosition(legs, steps, getCurrentProgress(tripStops));
-                            bus.setCenter(busPosition);
-                        }, 1000);
-                    } else console.warn("No bus position found for trip " + trip.id);
 
-                    break; // DEBUGGING
+                        trip.bus = bus;
+                    } else console.warn("No bus position found for trip " + trip.id);
                 }
+
+                setTrips(trips); // TODO: is it necessary ?
             }
         })();
         // eslint-disable-next-line react-hooks/exhaustive-deps
