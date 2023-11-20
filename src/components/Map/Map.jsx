@@ -1,15 +1,16 @@
 
 import { fetchData } from '../../lib/service';
-import { useEffect, useState } from 'react';
-import { getStopFromData, getStops } from '../../lib/service/stops';
+import { Fragment, useEffect, useState } from 'react';
+import { getStops } from '../../lib/service/stops';
 import { useRef } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
 import { stopIcon } from '../Icon';
 import { scheduleJob } from 'node-schedule';
 import { getDateFromTime } from '../../lib/utils/date';
-import { getCurrentPosition, getCurrentProgress, getCurrentTrips, getTripStops } from '../../lib/service/trips';
-import { getLineFromData, getLines } from '../../lib/service/lines';
-import { getDirectionLegSteps, getDirectionLegs } from '../../lib/service/direction';
+import { getCurrentTrips } from '../../lib/service/trips';
+import { getLines } from '../../lib/service/lines';
+import Bus from './Bus';
+import Trip from './Trip';
 
 export default function Map({ addAlert, showStops = false, showTrips = true }) {
     const [stops, setStops] = useState();
@@ -57,17 +58,7 @@ export default function Map({ addAlert, showStops = false, showTrips = true }) {
                 setTrips(t => t.map(trip => ({ ...trip, show: getDateFromTime(trip.departure_time).getTime() <= Date.now() && getDateFromTime(trip.arrival_time).getTime() > Date.now() })));
             });
 
-            const positionUpdate = setInterval(() => {
-                trips.filter(t => t.bus && t.show).forEach(trip => {
-                    const busPosition = getCurrentPosition(trip.legs, trip.steps, getCurrentProgress(trip.tripStops));
-                    trip.bus.setCenter(busPosition);
-                });
-            }, 1000);
-
-            return () => {
-                job.cancel();
-                clearInterval(positionUpdate);
-            }
+            return () => job.cancel();
         }
     }, [trips]);
 
@@ -112,67 +103,6 @@ export default function Map({ addAlert, showStops = false, showTrips = true }) {
 
                 setStops(stops);
             }
-
-            if (showTrips) {
-                for (const trip of trips.filter(t => !t.polyline && t.show)) {
-                    const legs = await getDirectionLegs(trip.direction_id);
-                    const steps = await getDirectionLegSteps(trip.direction_id);
-
-                    legs.sort((a, b) => a.sequence - b.sequence);
-                    steps.sort((a, b) => a.leg_id - b.leg_id || a.sequence - b.sequence);
-
-                    trip.legs = legs;
-                    trip.steps = steps;
-
-                    // draw all steps
-                    const snappedPath = [];
-                    steps.forEach((s, i) => {
-                        snappedPath.push(new window.google.maps.LatLng(s.start_lat, s.start_lng));
-                        if (s.end_lat !== steps[i + 1]?.start_lat || s.end_lng !== steps[i + 1]?.start_lng) snappedPath.push(new window.google.maps.LatLng(s.start_lat, s.start_lng));
-                    });
-
-                    // draw legs (stops)
-                    /*const snappedPath = legs.map(l => new window.google.maps.LatLng(getStopFromData(l.origin_id, { stops }).latitude, getStopFromData(l.origin_id, { stops }).longitude));
-                    snappedPath.push(new window.google.maps.LatLng(getStopFromData(legs[legs.length - 1].destination_id, { stops }).latitude, getStopFromData(legs[legs.length - 1].destination_id, { stops }).longitude));*/
-
-                    const line = getLineFromData(trip.line_id, { lines })
-                    const snappedPolyline = new window.google.maps.Polyline({
-                        path: snappedPath,
-                        strokeColor: line ? "rgb(" + line.color + ")" : "#0000FF",
-                        strokeWeight: 5
-                    });
-                    snappedPolyline.setMap(map);
-
-                    trip.polyline = snappedPolyline;
-
-                    snappedPolyline.addListener("click", e => {
-                        infoWindow.close();
-                        infoWindow.setContent("Ligne: " + line?.name + " -> " + getStopFromData(trip.destination_id, { stops })?.name + "<br />Heure de départ: " + trip.departure_time + "<br />Heure d'arrivée: " + trip.arrival_time + "<br/>Voyage:" + trip.id);
-                        infoWindow.setPosition(e.latLng);
-                        infoWindow.open(snappedPolyline.map);
-                    });
-
-                    const tripStops = await getTripStops(trip.id);
-                    trip.tripStops = tripStops;
-
-                    const busPosition = getCurrentPosition(legs, steps, getCurrentProgress(tripStops));
-                    if (busPosition) {
-                        const bus = new window.google.maps.Circle({
-                            fillColor: line ? "rgb(" + line.color + ")" : "#0000FF",
-                            fillOpacity: .8,
-                            strokeOpacity: .8,
-                            strokeWeight: 2,
-                            map,
-                            center: busPosition,
-                            radius: 20
-                        });
-
-                        trip.bus = bus;
-                    } else console.warn("No bus position found for trip " + trip.id);
-                }
-
-                setTrips(trips); // TODO: is it necessary ?
-            }
         })();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [map, stops, trips]);
@@ -184,6 +114,10 @@ export default function Map({ addAlert, showStops = false, showTrips = true }) {
             className="w-full h-full"
             ref={googleMapRef}
         >
+            {trips?.filter(a => a.show).map(a => (<Fragment key={a.id}>
+                <Bus key={a.id + "b"} trip={a} map={map} lines={lines} addAlert={addAlert} />
+                {showTrips && <Trip key={a.id + "t"} trip={a} map={map} lines={lines} addAlert={addAlert} />}
+            </Fragment>))}
         </div>
     );
 }
