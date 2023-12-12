@@ -4,15 +4,15 @@ import { Fragment, useEffect, useState } from 'react';
 import { getStops } from '../../lib/service/stops';
 import { useRef } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
-import { stopIcon } from '../Icon';
 import { scheduleJob } from 'node-schedule';
 import { getDateFromTime } from '../../lib/utils/date';
 import { getCurrentTrips } from '../../lib/service/trips';
 import { getLines } from '../../lib/service/lines';
 import Bus from './Bus';
 import Trip from './Trip';
+import Stop from './Stop';
 
-export default function Map({ addAlert, showStops = false, showTrips = true }) {
+export default function Map({ addAlert, showStops = false, showTrips = true, showBus = false }) {
     const [stops, setStops] = useState();
     const [lines, setLines] = useState();
 
@@ -20,6 +20,9 @@ export default function Map({ addAlert, showStops = false, showTrips = true }) {
     const [lastDate, setLastDate] = useState();
 
     const [loadMap, setLoadMap] = useState(false);
+
+    const [infoWindow, setInfoWindow] = useState();
+    const [markerLib, setMarkerLib] = useState();
 
     const googleMapRef = useRef();
     const [map, setMap] = useState();
@@ -65,6 +68,9 @@ export default function Map({ addAlert, showStops = false, showTrips = true }) {
     useEffect(() => {
         if (!loadMap) return;
 
+        window.google.maps.importLibrary("marker").then(setMarkerLib);
+        setInfoWindow(new window.google.maps.InfoWindow());
+
         const googleMap = new window.google.maps.Map(googleMapRef.current, {
             center: new window.google.maps.LatLng(46.20483, 6.1430388),
             zoom: 12,
@@ -73,51 +79,17 @@ export default function Map({ addAlert, showStops = false, showTrips = true }) {
         setMap(googleMap);
     }, [loadMap]);
 
-    useEffect(() => {
-        if (!map || !stops || !trips) return;
-
-        (async () => {
-            const { AdvancedMarkerElement } = await window.google.maps.importLibrary("marker");
-
-            const infoWindow = new window.google.maps.InfoWindow(); // TO CREATE IN STATE
-
-            if (showStops) {
-                stops.filter(s => !s.marker).forEach(stop => { // TODO: check if they are edited (not to redraw them)
-                    const pin = new DOMParser().parseFromString(stopIcon, "image/svg+xml").documentElement; // TODO: improve icon/class management for markers
-
-                    const marker = new AdvancedMarkerElement({ // TO CHANGE: advanced and create pin
-                        position: { lat: stop.latitude, lng: stop.longitude },
-                        map,
-                        title: stop.name,
-                        content: pin
-                    });
-
-                    stop.marker = marker;
-
-                    marker.addListener("click", () => {
-                        infoWindow.close();
-                        infoWindow.setContent(marker.title);
-                        infoWindow.open(marker.map, marker);
-                    });
-                });
-
-                setStops(stops);
-            }
-        })();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [map, stops, trips]);
-
-    // TODO: https://www.cluemediator.com/draw-a-route-between-two-points-using-google-maps-api-in-react
-
     return (loadMap &&
         <div
             className="w-full h-full"
             ref={googleMapRef}
         >
             {trips?.filter(a => a.show).map(a => (<Fragment key={a.id}>
-                <Bus key={a.id + "b"} trip={a} map={map} lines={lines} addAlert={addAlert} />
-                {showTrips && <Trip key={a.id + "t"} trip={a} map={map} lines={lines} addAlert={addAlert} />}
+                {showBus && markerLib && infoWindow && <Bus key={a.id + "b"} trip={a} map={map} lines={lines} AdvancedMarkerElement={markerLib.AdvancedMarkerElement} infoWindow={infoWindow} addAlert={addAlert} />}
+                {showTrips && infoWindow && <Trip key={a.id + "t"} trip={a} map={map} lines={lines} stops={stops} infoWindow={infoWindow} addAlert={addAlert} />}
             </Fragment>))}
+
+            {showStops && markerLib && infoWindow && stops?.map(stop => (<Stop key={stop.id} stop={stop} AdvancedMarkerElement={markerLib.AdvancedMarkerElement} map={map} infoWindow={infoWindow} />))}
         </div>
     );
 }
