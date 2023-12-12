@@ -70,7 +70,6 @@ export default function Trip({ trip, lines, map, stops, addAlert, infoWindow }) 
                         </div>
                     </dl>
                 </>, div);
-                console.log(div);
                 infoWindow.setContent(div);
 
                 infoWindow.setPosition(event.latLng);

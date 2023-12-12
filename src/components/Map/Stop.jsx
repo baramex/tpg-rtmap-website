@@ -15,8 +15,6 @@ export default function Stop({ stop, AdvancedMarkerElement, map, infoWindow }) {
                 content: pin
             });
 
-            stop.marker = marker;
-
             marker.addListener("click", () => {
                 infoWindow.close();
                 infoWindow.setContent(marker.title);

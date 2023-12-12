@@ -12,7 +12,7 @@ import Bus from './Bus';
 import Trip from './Trip';
 import Stop from './Stop';
 
-export default function Map({ addAlert, showStops = false, showTrips = true, showBus = false }) {
+export default function Map({ addAlert, showStops = false, showTrips = true, showBus = true }) {
     const [stops, setStops] = useState();
     const [lines, setLines] = useState();
 
@@ -85,7 +85,7 @@ export default function Map({ addAlert, showStops = false, showTrips = true, sho
             ref={googleMapRef}
         >
             {trips?.filter(a => a.show).map(a => (<Fragment key={a.id}>
-                {showBus && markerLib && infoWindow && <Bus key={a.id + "b"} trip={a} map={map} lines={lines} AdvancedMarkerElement={markerLib.AdvancedMarkerElement} infoWindow={infoWindow} addAlert={addAlert} />}
+                {showBus && markerLib && infoWindow && <Bus key={a.id + "b"} trip={a} map={map} stops={stops} lines={lines} AdvancedMarkerElement={markerLib.AdvancedMarkerElement} infoWindow={infoWindow} addAlert={addAlert} />}
                 {showTrips && infoWindow && <Trip key={a.id + "t"} trip={a} map={map} lines={lines} stops={stops} infoWindow={infoWindow} addAlert={addAlert} />}
             </Fragment>))}
 
